@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Foodie Junction - Order Food Online{% endblock %}
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <h1>Hungry? <span class="text-orange">We got you.</span></h1>
+    <p>Order from top-rated restaurants in {{ selected_city|capfirst }}. Fast delivery, every time.</p>
+    <div class="hero-search">
+      <span>🔍</span>
+      <input type="text" id="heroSearch" placeholder="Search for restaurant, cuisine or dish...">
+      <button onclick="heroSearchGo()">Search</button>
+    </div>
+  </div>
+  <div class="hero-image">🍔🍕🌯🍛🥤</div>
+</section>
+
+<!-- CATEGORY PILLS -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">What's on your mind?</h2>
+    <div class="category-grid">
+      {% for cat in categories %}
+      <a href="/?city={{ selected_city }}&search={{ cat.slug }}" class="category-card" style="--cat-color:{{ cat.color }}">
+        <div class="cat-emoji">{{ cat.emoji }}</div>
+        <div class="cat-name">{{ cat.name }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- FILTERS & RESTAURANTS -->
+<section class="section">
+  <div class="container">
+    <div class="restaurants-header">
+      <h2 class="section-title">Restaurants in <span class="text-orange">{{ selected_city|capfirst }}</span></h2>
+      <div class="filter-bar">
+        <a href="?city={{ selected_city }}&rating=4plus{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if request.GET.rating == '4plus' %}active{% endif %}">⭐ 4.0+</a>
+        <a href="?city={{ selected_city }}&pure_veg=1{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if request.GET.pure_veg == '1' %}active{% endif %}">🌿 Pure Veg</a>
+        <a href="?city={{ selected_city }}&serves_alcohol=1{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if request.GET.serves_alcohol == '1' %}active{% endif %}">🍺 Alcohol</a>
+        <a href="?city={{ selected_city }}&sort=cost_low{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if sort_by == 'cost_low' %}active{% endif %}">💰 Low Price</a>
+        <a href="?city={{ selected_city }}&sort=distance{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if sort_by == 'distance' %}active{% endif %}">📍 Nearby</a>
+        <a href="?city={{ selected_city }}&sort=rating{% if search_query %}&search={{ search_query }}{% endif %}" class="filter-chip {% if sort_by == 'rating' %}active{% endif %}">🏆 Top Rated</a>
+        {% if request.GET.rating or request.GET.pure_veg or request.GET.serves_alcohol or sort_by != 'relevance' %}
+        <a href="?city={{ selected_city }}" class="filter-chip clear-btn">✕ Clear</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if restaurants %}
+    <div class="restaurant-grid">
+      {% for r in restaurants %}
+      <a href="/restaurant/{{ r.id }}/" class="restaurant-card">
+        <div class="card-img-wrap">
+          <img src="{{ r.get_image }}" alt="{{ r.name }}" class="card-img" loading="lazy" onerror="this.src='/static/images/restaurant_default.jpg'">
+          {% if r.is_featured %}<span class="badge badge-featured">⭐ Featured</span>{% endif %}
+          {% if r.is_pure_veg %}<span class="badge badge-veg">🌿 Pure Veg</span>{% endif %}
+          <div class="card-delivery-time">🕐 {{ r.delivery_time_min }} min</div>
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ r.name }}</h3>
+            <span class="card-rating">⭐ {{ r.rating }}</span>
+          </div>
+          <p class="card-cuisine">{{ r.cuisine_types|truncatechars:40 }}</p>
+          <div class="card-meta">
+            <span>₹{{ r.avg_cost_for_two }} for two</span>
+            <span class="dot">·</span>
+            <span>{{ r.distance_km }} km</span>
+            {% if r.serves_alcohol %}<span class="dot">·</span><span>🍺</span>{% endif %}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-emoji">🍽️</div>
+      <h3>No restaurants found</h3>
+      <p>Try adjusting your filters or search in a different city.</p>
+      <a href="?city={{ selected_city }}" class="btn-primary">Clear Filters</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+function heroSearchGo() {
+  const q = document.getElementById('heroSearch').value.trim();
+  if (q) window.location.href = '/?city={{ selected_city }}&search=' + encodeURIComponent(q);
+}
+document.getElementById('heroSearch').addEventListener('keypress', e => { if(e.key==='Enter') heroSearchGo(); });
+</script>
+{% endblock %}

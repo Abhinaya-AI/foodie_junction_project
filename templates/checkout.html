@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Checkout - Foodie Junction{% endblock %}
+{% block content %}
+<div class="container checkout-page">
+  <h1 class="page-title">💳 Checkout</h1>
+  <div class="checkout-layout">
+    <!-- Delivery Form -->
+    <div class="checkout-form">
+      <div class="checkout-section">
+        <h3>📍 Delivery Address</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Full Name *</label><input type="text" id="c_name" class="form-control" value="{{ user.name }}" placeholder="Your name"></div>
+          <div class="form-group"><label>Phone *</label><input type="tel" id="c_phone" class="form-control" value="{{ user.phone }}" placeholder="10-digit phone"></div>
+        </div>
+        <div class="form-group"><label>Delivery Address *</label><textarea id="c_address" class="form-control" rows="3" placeholder="Flat/Door no., Street, Area, City"></textarea></div>
+        <div class="form-group"><label>Pincode *</label><input type="text" id="c_pincode" class="form-control" placeholder="6-digit pincode" maxlength="6"></div>
+        <div class="form-group"><label>Special Instructions</label><input type="text" id="c_instructions" class="form-control" placeholder="Any special instructions for delivery?"></div>
+      </div>
+      <div class="checkout-section">
+        <h3>💳 Payment Method</h3>
+        <div class="payment-options">
+          <label class="payment-option">
+            <input type="radio" name="payment" value="cod" checked> <span>💵 Cash on Delivery</span>
+          </label>
+          <label class="payment-option">
+            <input type="radio" name="payment" value="online"> <span>💳 Online Payment (Razorpay)</span>
+          </label>
+        </div>
+      </div>
+      <button class="btn-primary btn-full" id="placeOrderBtn" onclick="placeOrder()">Place Order →</button>
+    </div>
+    <!-- Order Summary -->
+    <div class="order-summary">
+      <h3>Order Summary</h3>
+      <div class="summary-restaurant">From: <strong>{{ cart.restaurant.name }}</strong></div>
+      {% for item in items %}
+      <div class="summary-item">
+        <span>{{ item.food_item.name }} × {{ item.quantity }}</span>
+        <span>₹{{ item.subtotal }}</span>
+      </div>
+      {% endfor %}
+      <hr>
+      <div class="summary-row"><span>Subtotal</span><span>₹{{ subtotal }}</span></div>
+      <div class="summary-row"><span>Delivery</span><span>₹{{ delivery_fee }}</span></div>
+      <div class="summary-row summary-total"><span>Total</span><span>₹{{ total }}</span></div>
+    </div>
+  </div>
+</div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+const RAZORPAY_KEY = '{{ razorpay_key }}';
+async function placeOrder() {
+  const btn  = document.getElementById('placeOrderBtn');
+  const body = {
+    name: document.getElementById('c_name').value,
+    phone: document.getElementById('c_phone').value,
+    address: document.getElementById('c_address').value,
+    pincode: document.getElementById('c_pincode').value,
+    instructions: document.getElementById('c_instructions').value,
+    payment_method: document.querySelector('input[name="payment"]:checked').value,
+  };
+  if (!body.name||!body.phone||!body.address||!body.pincode) { showToast('Please fill all required fields'); return; }
+  btn.textContent = 'Placing Order...'; btn.disabled = true;
+  const res  = await fetch('/api/place-order/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(body)});
+  const data = await res.json();
+  if (!data.success) { showToast(data.message); btn.textContent='Place Order →'; btn.disabled=false; return; }
+  if (data.payment_required) {
+    const options = {
+      key: RAZORPAY_KEY, amount: data.amount, currency:'INR',
+      name:'Foodie Junction', description:'Food Order',
+      order_id: data.razorpay_order_id,
+      handler: async function(response) {
+        const vRes  = await fetch('/api/payment/verify/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(response)});
+        const vData = await vRes.json();
+        if (vData.success) window.location.href = vData.redirect;
+        else showToast('Payment verification failed');
+      },
+      theme: {color:'#FF6B35'}
+    };
+    new Razorpay(options).open();
+    btn.textContent='Place Order →'; btn.disabled=false;
+  } else {
+    window.location.href = data.redirect;
+  }
+}
+</script>
+{% endblock %}

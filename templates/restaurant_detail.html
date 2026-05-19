@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}{{ restaurant.name }} - Foodie Junction{% endblock %}
+{% block content %}
+<div class="container">
+
+  <!-- Restaurant Header -->
+  <div class="restaurant-hero">
+    <img src="{{ restaurant.get_image }}" alt="{{ restaurant.name }}" class="restaurant-hero-img" onerror="this.src='/static/images/restaurant_default.jpg'">
+    <div class="restaurant-hero-info">
+      <h1>{{ restaurant.name }}</h1>
+      <p class="restaurant-cuisine">{{ restaurant.cuisine_types }}</p>
+      <div class="restaurant-badges">
+        <span class="info-badge">⭐ {{ restaurant.rating }} ({{ restaurant.num_ratings }} ratings)</span>
+        <span class="info-badge">🕐 {{ restaurant.delivery_time_min }} min</span>
+        <span class="info-badge">📍 {{ restaurant.distance_km }} km</span>
+        <span class="info-badge">₹{{ restaurant.avg_cost_for_two }} for two</span>
+        {% if restaurant.is_pure_veg %}<span class="info-badge badge-veg">🌿 Pure Veg</span>{% endif %}
+        {% if restaurant.serves_alcohol %}<span class="info-badge">🍺 Serves Alcohol</span>{% endif %}
+      </div>
+      <div class="restaurant-actions">
+        <button class="btn-outline" onclick="openBookingModal()">📅 Book a Table</button>
+        <button class="btn-outline" onclick="openReviewModal()">✍️ Write Review</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+    <!-- Menu -->
+    <div class="menu-section">
+      <div class="menu-nav">
+        {% for cat_name, items in categories.items %}
+        <a href="#cat-{{ forloop.counter }}" class="menu-nav-item">{{ cat_name }}</a>
+        {% endfor %}
+      </div>
+      {% for cat_name, items in categories.items %}
+      <div class="menu-category" id="cat-{{ forloop.counter }}">
+        <h2 class="category-heading">{{ cat_name }}</h2>
+        {% for item in items %}
+        <div class="food-card" id="food-{{ item.id }}">
+          <div class="food-info">
+            <div class="food-header">
+              <span class="veg-dot {% if item.is_veg %}veg{% else %}nonveg{% endif %}"></span>
+              {% if item.is_bestseller %}<span class="bestseller-tag">🏆 Bestseller</span>{% endif %}
+            </div>
+            <h3 class="food-name">{{ item.name }}</h3>
+            <p class="food-price">₹{{ item.price }}</p>
+            <p class="food-desc">{{ item.description }}</p>
+          </div>
+          <div class="food-action">
+            <img src="{{ item.get_image }}" alt="{{ item.name }}" class="food-img" onerror="this.src='/static/images/food_default.jpg'">
+            <div class="add-btn-wrap" id="wrap-{{ item.id }}">
+              {% with qty=0 %}
+              <div class="qty-counter hidden" id="qty-{{ item.id }}">
+                <button onclick="updateCart({{ item.id }},'remove')">-</button>
+                <span id="qty-val-{{ item.id }}">0</span>
+                <button onclick="updateCart({{ item.id }},'add')">+</button>
+              </div>
+              <button class="add-btn" id="add-{{ item.id }}" onclick="updateCart({{ item.id }},'add')">ADD</button>
+              {% endwith %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+      <h3>🛒 Your Order</h3>
+      <div id="sidebarItems"><p class="empty-cart-msg">Add items to get started</p></div>
+      <div id="sidebarTotal" class="sidebar-total hidden">
+        <div class="total-row"><span>Subtotal</span><span id="sidebarSubtotal">₹0</span></div>
+        <div class="total-row"><span>Delivery</span><span>₹40</span></div>
+        <div class="total-row total-bold"><span>Total</span><span id="sidebarTotalAmt">₹0</span></div>
+        <a href="/checkout/" class="btn-primary btn-full mt-8">Proceed to Checkout →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviews -->
+  {% if reviews %}
+  <div class="reviews-section">
+    <h2>Customer Reviews</h2>
+    <div class="reviews-grid">
+      {% for review in reviews %}
+      <div class="review-card">
+        <div class="review-header">
+          <span class="reviewer-avatar">{{ review.user.get_full_name|first|upper }}</span>
+          <div>
+            <strong>{{ review.user.get_full_name }}</strong>
+            <div class="review-stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}⭐{% else %}☆{% endif %}{% endfor %}</div>
+          </div>
+        </div>
+        <p class="review-text">{{ review.comment }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay hidden" id="bookingModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('bookingModal')">✕</button>
+    <h2>📅 Book a Table</h2>
+    <div class="form-group"><label>Your Name</label><input type="text" id="b_name" class="form-control"></div>
+    <div class="form-group"><label>Phone</label><input type="tel" id="b_phone" class="form-control"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date</label><input type="date" id="b_date" class="form-control"></div>
+      <div class="form-group"><label>Time</label><input type="time" id="b_time" class="form-control"></div>
+    </div>
+    <div class="form-group"><label>Guests</label>
+      <select id="b_guests" class="form-control"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6+</option></select>
+    </div>
+    <div class="form-group"><label>Special Requests</label><textarea id="b_special" class="form-control" rows="2"></textarea></div>
+    <button class="btn-primary btn-full" onclick="submitBooking()">Confirm Booking</button>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-overlay hidden" id="reviewModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('reviewModal')">✕</button>
+    <h2>✍️ Write a Review</h2>
+    <div class="form-group"><label>Overall Rating</label>
+      <div class="star-select" id="starRating">
+        {% for i in "12345" %}<span class="star" data-val="{{ forloop.counter }}" onclick="setRating({{ forloop.counter }})">☆</span>{% endfor %}
+      </div>
+    </div>
+    <div class="form-group"><label>Your Review</label><textarea id="r_comment" class="form-control" rows="3" placeholder="Tell us about your experience..."></textarea></div>
+    <button class="btn-primary btn-full" onclick="submitReview()">Submit Review</button>
+  </div>
+</div>
+
+<script>
+const cartItems  = {{ cart_items|safe }};
+const restaurantId = {{ restaurant.id }};
+let selectedRating = 4;
+
+// Initialize cart display
+document.addEventListener('DOMContentLoaded', () => {
+  Object.entries(cartItems).forEach(([itemId, qty]) => {
+    if (qty > 0) showQtyCounter(parseInt(itemId), qty);
+  });
+  updateSidebar();
+});
+
+async function updateCart(itemId, action) {
+  {% if not user.is_authenticated %}
+    window.location.href = '/login/';
+    return;
+  {% endif %}
+  const res  = await fetch('/api/cart/update/', {
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({food_item_id: itemId, action})
+  });
+  const data = await res.json();
+  if (data.different_restaurant) {
+    if (confirm(data.message)) {
+      await fetch('/api/cart/update/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')}, body: JSON.stringify({food_item_id: itemId, action:'clear'})});
+      updateCart(itemId, 'add');
+    }
+    return;
+  }
+  if (data.success) {
+    cartItems[itemId] = data.item_quantity;
+    if (data.item_quantity > 0) showQtyCounter(itemId, data.item_quantity);
+    else hideQtyCounter(itemId);
+    updateCartBadge(data.cart_count);
+    updateSidebar();
+  }
+}
+
+function showQtyCounter(itemId, qty) {
+  document.getElementById('add-'+itemId)?.classList.add('hidden');
+  const qtyEl = document.getElementById('qty-'+itemId);
+  qtyEl?.classList.remove('hidden');
+  const qtyVal = document.getElementById('qty-val-'+itemId);
+  if (qtyVal) qtyVal.textContent = qty;
+}
+function hideQtyCounter(itemId) {
+  document.getElementById('add-'+itemId)?.classList.remove('hidden');
+  document.getElementById('qty-'+itemId)?.classList.add('hidden');
+}
+
+function updateSidebar() {
+  fetch('/api/cart/').then(r=>r.json()).then(data=>{
+    const el = document.getElementById('sidebarItems');
+    const totalEl = document.getElementById('sidebarTotal');
+    if (!data.items?.length) {
+      el.innerHTML = '<p class="empty-cart-msg">Add items to get started</p>';
+      totalEl.classList.add('hidden'); return;
+    }
+    el.innerHTML = data.items.map(i=>
+      `<div class="sidebar-item">
+        <span>${i.name}</span>
+        <div class="sidebar-qty">
+          <button onclick="updateCart(${i.food_item_id},'remove')">-</button>
+          <span>${i.quantity}</span>
+          <button onclick="updateCart(${i.food_item_id},'add')">+</button>
+        </div>
+        <span>₹${i.subtotal}</span>
+      </div>`
+    ).join('');
+    const sub = data.total;
+    document.getElementById('sidebarSubtotal').textContent = '₹'+sub.toFixed(0);
+    document.getElementById('sidebarTotalAmt').textContent = '₹'+(sub+40).toFixed(0);
+    totalEl.classList.remove('hidden');
+  });
+}
+
+function openBookingModal() {
+  {% if not user.is_authenticated %}window.location.href='/login/';return;{% endif %}
+  document.getElementById('bookingModal').classList.remove('hidden');
+}
+function openReviewModal() {
+  {% if not user.is_authenticated %}window.location.href='/login/';return;{% endif %}
+  document.getElementById('reviewModal').classList.remove('hidden');
+}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function setRating(val) {
+  selectedRating = val;
+  document.querySelectorAll('#starRating .star').forEach((s,i) => s.textContent = i<val ? '⭐' : '☆');
+}
+
+async function submitBooking() {
+  const body = {restaurant_id:restaurantId, name:document.getElementById('b_name').value,
+    phone:document.getElementById('b_phone').value, date:document.getElementById('b_date').value,
+    time:document.getElementById('b_time').value, guests:document.getElementById('b_guests').value,
+    special_requests:document.getElementById('b_special').value};
+  const res  = await fetch('/api/book-table/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(body)});
+  const data = await res.json();
+  showToast(data.message);
+  if(data.success) closeModal('bookingModal');
+}
+async function submitReview() {
+  const body = {restaurant_id:restaurantId, rating:selectedRating, comment:document.getElementById('r_comment').value};
+  const res  = await fetch('/api/reviews/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(body)});
+  const data = await res.json();
+  showToast(data.message);
+  if(data.success) closeModal('reviewModal');
+}
+</script>
+{% endblock %}

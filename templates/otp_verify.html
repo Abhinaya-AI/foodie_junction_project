@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Verify OTP - Foodie Junction{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-illustration">🔐</div>
+    <h2>Secure OTP Verification</h2>
+    <p>Your one-time password keeps your account safe and secure.</p>
+  </div>
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-logo">📩</div>
+      <h1>Verify your <span class="text-orange">Email</span></h1>
+      <p class="auth-sub">We sent a 6-digit code to<br><strong>{{ email }}</strong></p>
+      <div class="otp-inputs">
+        <input type="text" class="otp-box" maxlength="1" id="o0" oninput="otpMove(0)" onkeydown="otpBack(event,0)">
+        <input type="text" class="otp-box" maxlength="1" id="o1" oninput="otpMove(1)" onkeydown="otpBack(event,1)">
+        <input type="text" class="otp-box" maxlength="1" id="o2" oninput="otpMove(2)" onkeydown="otpBack(event,2)">
+        <input type="text" class="otp-box" maxlength="1" id="o3" oninput="otpMove(3)" onkeydown="otpBack(event,3)">
+        <input type="text" class="otp-box" maxlength="1" id="o4" oninput="otpMove(4)" onkeydown="otpBack(event,4)">
+        <input type="text" class="otp-box" maxlength="1" id="o5" oninput="otpMove(5)" onkeydown="otpBack(event,5)">
+      </div>
+      <span class="field-error" id="otpError"></span>
+      <button class="btn-primary btn-full" id="verifyBtn" onclick="verifyOTP()">Verify & Login</button>
+      <div class="otp-resend">
+        <span id="timerText">Resend OTP in <strong id="countdown">60</strong>s</span>
+        <button id="resendBtn" class="link-btn hidden" onclick="resendOTP()">Resend OTP</button>
+      </div>
+      <a href="/login/" class="link-btn mt-8">← Change email</a>
+    </div>
+  </div>
+</div>
+<script>
+// Auto-move between OTP boxes
+function otpMove(i) {
+  const v = document.getElementById('o'+i).value;
+  if (v && i < 5) document.getElementById('o'+(i+1)).focus();
+  if (getOTP().length === 6) verifyOTP();
+}
+function otpBack(e, i) {
+  if (e.key==='Backspace' && !document.getElementById('o'+i).value && i > 0)
+    document.getElementById('o'+(i-1)).focus();
+}
+function getOTP() { return Array.from({length:6},(_,i)=>document.getElementById('o'+i).value).join(''); }
+
+// Countdown timer
+let sec = 60;
+const timer = setInterval(() => {
+  document.getElementById('countdown').textContent = --sec;
+  if (sec <= 0) {
+    clearInterval(timer);
+    document.getElementById('timerText').classList.add('hidden');
+    document.getElementById('resendBtn').classList.remove('hidden');
+  }
+}, 1000);
+
+async function verifyOTP() {
+  const otp = getOTP();
+  const err = document.getElementById('otpError');
+  err.textContent = '';
+  if (otp.length !== 6) { err.textContent = 'Please enter all 6 digits'; return; }
+  document.getElementById('verifyBtn').textContent = 'Verifying...';
+  document.getElementById('verifyBtn').disabled = true;
+  const res  = await fetch('/api/verify-otp/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')}, body: JSON.stringify({otp})});
+  const data = await res.json();
+  if (data.success) { showToast('Login successful! 🎉'); window.location.href = data.redirect; }
+  else {
+    err.textContent = data.message;
+    document.getElementById('verifyBtn').textContent = 'Verify & Login';
+    document.getElementById('verifyBtn').disabled = false;
+    Array.from({length:6},(_,i)=>{ document.getElementById('o'+i).value=''; });
+    document.getElementById('o0').focus();
+  }
+}
+async function resendOTP() {
+  const res  = await fetch('/api/resend-otp/', {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}});
+  const data = await res.json();
+  showToast(data.message);
+}
+document.getElementById('o0').focus();
+</script>
+{% endblock %}

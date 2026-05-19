@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Your Cart - Foodie Junction{% endblock %}
+{% block content %}
+<div class="container cart-page">
+  <h1 class="page-title">🛒 Your Cart</h1>
+  {% if items %}
+  <div class="cart-layout">
+    <div class="cart-items">
+      <div class="cart-restaurant-name">From: <strong>{{ cart.restaurant.name }}</strong></div>
+      {% for item in items %}
+      <div class="cart-item" id="cart-item-{{ item.food_item.id }}">
+        <img src="{{ item.food_item.get_image }}" alt="{{ item.food_item.name }}" class="cart-item-img" onerror="this.src='/static/images/food_default.jpg'">
+        <div class="cart-item-info">
+          <span class="veg-dot {% if item.food_item.is_veg %}veg{% else %}nonveg{% endif %}"></span>
+          <h4>{{ item.food_item.name }}</h4>
+          <p class="cart-item-price">₹{{ item.food_item.price }} each</p>
+        </div>
+        <div class="cart-item-controls">
+          <div class="qty-counter">
+            <button onclick="cartUpdate({{ item.food_item.id }},'remove')">-</button>
+            <span id="qty-{{ item.food_item.id }}">{{ item.quantity }}</span>
+            <button onclick="cartUpdate({{ item.food_item.id }},'add')">+</button>
+          </div>
+          <p class="cart-item-subtotal" id="sub-{{ item.food_item.id }}">₹{{ item.subtotal }}</p>
+          <button class="remove-btn" onclick="cartUpdate({{ item.food_item.id }},'delete')">🗑️</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="cart-summary">
+      <h3>Order Summary</h3>
+      <div class="summary-row"><span>Subtotal</span><span id="cartSubtotal">₹{{ subtotal }}</span></div>
+      <div class="summary-row"><span>Delivery Fee</span><span>₹{{ delivery_fee }}</span></div>
+      <div class="summary-row summary-total"><span>Total</span><span id="cartTotal">₹{{ total }}</span></div>
+      <a href="/checkout/" class="btn-primary btn-full">Proceed to Checkout →</a>
+      <a href="/" class="btn-outline btn-full mt-8">+ Add More Items</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-emoji">🛒</div>
+    <h3>Your cart is empty</h3>
+    <p>Looks like you haven't added anything yet.</p>
+    <a href="/" class="btn-primary">Browse Restaurants</a>
+  </div>
+  {% endif %}
+</div>
+<script>
+async function cartUpdate(itemId, action) {
+  const res  = await fetch('/api/cart/update/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({food_item_id:itemId,action})});
+  const data = await res.json();
+  if (data.success) {
+    updateCartBadge(data.cart_count);
+    if (action==='delete' || data.item_quantity===0) {
+      document.getElementById('cart-item-'+itemId)?.remove();
+      if (!document.querySelector('.cart-item')) location.reload();
+    } else {
+      document.getElementById('qty-'+itemId).textContent = data.item_quantity;
+      fetch('/api/cart/').then(r=>r.json()).then(d=>{
+        const it = d.items.find(i=>i.food_item_id===itemId);
+        if(it) document.getElementById('sub-'+itemId).textContent='₹'+it.subtotal.toFixed(0);
+        document.getElementById('cartSubtotal').textContent='₹'+d.total.toFixed(0);
+        document.getElementById('cartTotal').textContent='₹'+(d.total+40).toFixed(0);
+      });
+    }
+  }
+}
+</script>
+{% endblock %}

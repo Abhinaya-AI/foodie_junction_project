@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}My Profile - Foodie Junction{% endblock %}
+{% block content %}
+<div class="container profile-page">
+  <div class="profile-layout">
+    <div class="profile-sidebar">
+      <div class="profile-avatar-lg">{{ user.get_full_name|first|upper }}</div>
+      <h2>{{ user.get_full_name }}</h2>
+      <p class="profile-email">{{ user.email }}</p>
+      <nav class="profile-nav">
+        <a href="#orders" class="active">📦 My Orders</a>
+        <a href="#bookings">📅 Table Bookings</a>
+        <a href="#settings">⚙️ Settings</a>
+      </nav>
+    </div>
+    <div class="profile-content">
+      <section id="orders">
+        <h2>My Orders</h2>
+        {% for order in orders %}
+        <div class="order-card">
+          <div class="order-card-header">
+            <div>
+              <strong>{{ order.restaurant.name }}</strong>
+              <span class="order-id">#FJ{{ order.id|stringformat:"04d" }}</span>
+            </div>
+            <span class="order-status status-{{ order.status }}">{{ order.get_status_display }}</span>
+          </div>
+          <div class="order-items-preview">
+            {% for item in order.items.all %}<span>{{ item.food_item.name }} ×{{ item.quantity }}</span>{% endfor %}
+          </div>
+          <div class="order-card-footer">
+            <span>₹{{ order.total_amount }}</span>
+            <span>{{ order.created_at|date:"d M Y, g:i A" }}</span>
+            <span class="payment-method">{{ order.get_payment_method_display }}</span>
+          </div>
+        </div>
+        {% empty %}<div class="empty-state"><div class="empty-emoji">📦</div><p>No orders yet. Start ordering!</p><a href="/" class="btn-primary">Browse Restaurants</a></div>
+        {% endfor %}
+      </section>
+      <section id="bookings">
+        <h2>Table Bookings</h2>
+        {% for booking in bookings %}
+        <div class="booking-card">
+          <strong>{{ booking.restaurant.name }}</strong>
+          <span>{{ booking.booking_date }} at {{ booking.booking_time }}</span>
+          <span>{{ booking.num_guests }} guests</span>
+          <span class="order-status status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+        </div>
+        {% empty %}<p>No table bookings yet.</p>{% endfor %}
+      </section>
+      <section id="settings">
+        <h2>Settings</h2>
+        <div class="form-group"><label>Full Name</label><input type="text" id="p_name" class="form-control" value="{{ user.name }}"></div>
+        <div class="form-group"><label>Phone</label><input type="tel" id="p_phone" class="form-control" value="{{ user.phone }}"></div>
+        <div class="form-group"><label>Email (cannot change)</label><input type="email" class="form-control" value="{{ user.email }}" disabled></div>
+        <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+async function saveProfile() {
+  const res  = await fetch('/api/profile/update/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({name:document.getElementById('p_name').value,phone:document.getElementById('p_phone').value})});
+  const data = await res.json();
+  showToast(data.message);
+}
+</script>
+{% endblock %}

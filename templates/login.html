@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Login - Foodie Junction{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-illustration">🍕🍔🌯🍛🥤</div>
+    <h2>India's favourite food delivery app</h2>
+    <p>Order from 500+ restaurants across 5 cities. Fast delivery guaranteed.</p>
+  </div>
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-logo">🍔</div>
+      <h1>Welcome to <span class="text-orange">Foodie Junction</span></h1>
+      <p class="auth-sub">Sign in to order your favourite food</p>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="emailInput" class="form-control" placeholder="you@example.com" autofocus>
+        <span class="field-error" id="emailError"></span>
+      </div>
+      <button class="btn-primary btn-full" id="sendOtpBtn" onclick="sendOTP()">
+        <span id="sendBtnText">Send OTP</span>
+        <span id="sendBtnLoader" class="btn-loader hidden">⏳</span>
+      </button>
+      <p class="auth-note">We'll send a 6-digit OTP to verify your email</p>
+    </div>
+  </div>
+</div>
+<script>
+async function sendOTP() {
+  const email = document.getElementById('emailInput').value.trim();
+  const err   = document.getElementById('emailError');
+  err.textContent = '';
+  if (!email || !email.includes('@')) { err.textContent = 'Enter a valid email address'; return; }
+  document.getElementById('sendBtnText').textContent   = 'Sending...';
+  document.getElementById('sendBtnLoader').classList.remove('hidden');
+  document.getElementById('sendOtpBtn').disabled = true;
+  const res  = await fetch('/api/send-otp/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')}, body: JSON.stringify({email})});
+  const data = await res.json();
+  if (data.success) { window.location.href = data.redirect; }
+  else {
+    err.textContent = data.message;
+    document.getElementById('sendBtnText').textContent = 'Send OTP';
+    document.getElementById('sendBtnLoader').classList.add('hidden');
+    document.getElementById('sendOtpBtn').disabled = false;
+  }
+}
+document.getElementById('emailInput').addEventListener('keypress', e => { if(e.key==='Enter') sendOTP(); });
+</script>
+{% endblock %}

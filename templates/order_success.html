@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Order Confirmed - Foodie Junction{% endblock %}
+{% block content %}
+<div class="success-page">
+  <div class="success-card">
+    <div class="success-icon">✅</div>
+    <h1>Order Confirmed!</h1>
+    <p>Your order from <strong>{{ order.restaurant.name }}</strong> has been placed.</p>
+    <div class="order-id-badge">Order #FJ{{ order.id|stringformat:"04d" }}</div>
+    <div class="delivery-eta">🕐 Estimated delivery: 30–45 minutes</div>
+    <div class="order-items-list">
+      {% for item in order.items.all %}
+      <div class="oi-row"><span>{{ item.food_item.name }} × {{ item.quantity }}</span><span>₹{{ item.subtotal }}</span></div>
+      {% endfor %}
+      <div class="oi-row oi-total"><span>Total Paid</span><span>₹{{ order.total_amount }}</span></div>
+    </div>
+    <div class="delivery-addr">
+      <strong>Delivering to:</strong><br>{{ order.delivery_name }}<br>{{ order.delivery_address }}, {{ order.delivery_pincode }}
+    </div>
+    <div class="success-actions">
+      <a href="/" class="btn-primary">Order Again</a>
+      <a href="/profile/" class="btn-outline">Track Order</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
